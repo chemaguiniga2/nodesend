@@ -2,6 +2,7 @@ const Enlaces = require('../models/Enlace');
 const shortid = require('shortid');
 const bcrypt = require('bcrypt');
 const { validationResult } = require('express-validator');
+const Enlace = require('../models/Enlace');
 
 
 exports.nuevoEnlace = async (req, res, next) => {
@@ -74,12 +75,53 @@ exports.obtenerEnlace = async (req, res, next) => {
     }
 
     //si el enlace existe
-    res.json({ archivo: enlace.nombre });
+    res.json({ archivo: enlace.nombre, password: false });
 
     //Si las descargas son iguales  1 - borrar la entrada y el archivo
 
     next();
 
     //si las descargas son > a 1 - restar 1
+
+}
+
+// retorna si el enlace tiene password o no
+exports.tienePassword = async (req, res, next) => {
+    const { url } = req.params;
+
+    //verificar si existe el enlace
+
+    const enlace = await Enlaces.findOne({ url });
+
+    if(!enlace) {
+        res.status(404).json({ msg: 'Ese enlace no existe' });
+        return next();
+    }
+
+    if(enlace.password) {
+        return res.json({ password: true, enlace: enlace.url });
+    }
+
+    next();
+}
+
+//verifica si el password es correcto
+exports.verificarPassword = async (req, res, next) => {
+
+    const { url } = req.params;
+    const { password } = req.body;
+
+    //consultar por el enlace
+    const enlace = await Enlace.findOne({ url });
+
+    //verificar el password
+    if(bcrypt.compareSync(password, enlace.password)) {
+        //permitirle al usuario descargar el archivo
+        next();
+    } else {
+        return res.status(401).json({ msg: 'Password incorrecto' })
+    }
+
+
 
 }
